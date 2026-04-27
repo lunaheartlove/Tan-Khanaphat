@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LOVE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Mali', cursive;
+            background: linear-gradient(to right, #FDC7D7, #FFFFFF, #FDC7D7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* การ์ดหลัก ใช้สไตล์เดียวกับหน้านับวัน */
+        .card {
+            background: #fff;
+            border-radius: 25px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 2px solid #E86C8D;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        /* puzzle-wrapper แค่ช่วยจัด spacing เพิ่ม */
+        .puzzle-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        h1 {
+            color: #5C3A42;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        p.subtitle {
+            margin-bottom: 12px;
+            color: #7C6270;
+            font-size: 14px;
+        }
+
+        .puzzle {
+            width: 300px;
+            height: 300px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            background: #FFD6F4;
+            border-radius: 18px;
+            overflow: hidden;
+            touch-action: none;
+            margin: 10px 0;
+            transition: transform 0.1s;
+            /* เพิ่ม transition สำหรับการสลับชิ้นส่วน */
+        }
+
+        .piece {
+            width: 100%;
+            height: 100%;
+            background-image: url('img/a6.png'); /* อิอิ */
+            /* รูปคู่ของลูกค้า */
+            background-size: 300px 300px;
+            cursor: pointer;
+            /* เปลี่ยนเป็น cursor: pointer สำหรับการแตะ */
+            border-radius: 0px;
+            transition: outline 0.1s, transform 0.1s;
+        }
+
+        /* 🆕 เพิ่มสไตล์สำหรับชิ้นส่วนที่ถูกเลือก (Tap-to-Swap) */
+        .piece.selected {
+            outline: 4px solid #5C3A42;
+            transform: scale(1.03);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 🗑️ ลบสไตล์ drag/grab ที่ไม่ใช้แล้วออกไป */
+        /* .piece:active, .piece.over ถูกยกเลิกโดยฟังก์ชันใหม่ */
+
+        .status {
+            font-size: 14px;
+            color: #7C6270;
+            text-align: center;
+            min-height: 20px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        button {
+            font-family: 'Mali', cursive;
+            padding: 8px 18px;
+            border-radius: 999px;
+            border: none;
+            background: #E86C8D;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(232, 108, 141, 0.35);
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(232, 108, 141, 0.45);
+        }
+
+        /* ============================
+            Popup ฉลองตอนต่อเสร็จ 🎉
+        ============================= */
+        .celebrate-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .celebrate-overlay.show {
+            display: flex;
+        }
+
+        .celebrate-box {
+            background: #FFF9FF;
+            border-radius: 20px;
+            padding: 24px 26px 20px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .celebrate-title {
+            font-size: 20px;
+            color: #E86C8D;
+            margin-bottom: 8px;
+        }
+
+        .celebrate-text {
+            font-size: 14px;
+            color: #5C3A42;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .celebrate-btn {
+            margin-top: 4px;
+        }
+
+        /* หัวใจลอย ๆ */
+        .heart {
+            position: absolute;
+            font-size: 18px;
+            opacity: 0;
+            animation: floatHeart 2.5s ease-in-out infinite;
+        }
+
+        .heart.h1 {
+            left: 15%;
+            bottom: -10px;
+            animation-delay: 0s;
+        }
+
+        .heart.h2 {
+            right: 10%;
+            bottom: -10px;
+            animation-delay: 0.4s;
+        }
+
+        .heart.h3 {
+            left: 50%;
+            bottom: -10px;
+            animation-delay: 0.8s;
+        }
+
+        @keyframes floatHeart {
+            0% {
+                transform: translateY(0) scale(0.9);
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-80px) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* =========================
+            Responsive Add-on
+        ========================= */
+
+        /* กันติ่งขอบจอ + ระยะปลอดภัย */
+        @supports (padding: max(0px)) {
+            body {
+                min-height: 100dvh;
+                padding-left: max(24px, env(safe-area-inset-left));
+                padding-right: max(24px, env(safe-area-inset-right));
+                padding-top: max(24px, env(safe-area-inset-top));
+                padding-bottom: max(24px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* ---------- โทรศัพท์เล็กมาก (≤ 360px) ---------- */
+        @media (max-width: 360px) {
+            .card {
+                width: min(94vw, 520px);
+                padding: 24px 18px;
+                border-radius: 20px;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, .12);
+            }
+
+            h1 {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            p.subtitle {
+                font-size: 13px;
+                margin-bottom: 10px;
+            }
+
+            .puzzle {
+                width: 220px;
+                height: 220px;
+                border-radius: 16px;
+            }
+
+            .piece {
+                background-size: 220px 220px;
+            }
+
+            .status {
+                font-size: 13px;
+            }
+
+            button {
+                font-size: 15px;
+                padding: 7px 16px;
+            }
+        }
+
+        /* ---------- โทรศัพท์ทั่วไป (361–480px) ---------- */
+        @media (min-width: 361px) and (max-width: 480px) {
+            .card {
+                width: min(92vw, 560px);
+                padding: 28px 22px;
+                border-radius: 22px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .puzzle {
+                width: 240px;
+                height: 240px;
+            }
+
+            .piece {
+                background-size: 240px 240px;
+            }
+        }
+
+        /* ---------- มือถือจอใหญ่ / Phablet (481–599px) ---------- */
+        @media (min-width: 481px) and (max-width: 599px) {
+            .card {
+                width: min(88vw, 600px);
+                padding: 32px 28px;
+                border-radius: 24px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .puzzle {
+                width: 260px;
+                height: 260px;
+            }
+
+            .piece {
+                background-size: 260px 260px;
+            }
+        }
+
+        /* ---------- iPad / Tablet (600–1024px) ---------- */
+        @media (min-width: 600px) and (max-width: 1024px) {
+            .card {
+                width: min(76vw, 680px);
+                padding: 36px 40px;
+                border-radius: 25px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, .12);
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .puzzle {
+                width: 300px;
+                height: 300px;
+            }
+
+            .piece {
+                background-size: 300px 300px;
+            }
+        }
+
+        /* ---------- แนวนอนความสูงน้อย (Landscape/จอเตี้ย) ---------- */
+        @media (orientation: landscape) and (max-height: 420px) {
+            body {
+                padding-top: 12px;
+                padding-bottom: 12px;
+            }
+
+            .card {
+                width: min(86vw, 640px);
+                padding: 20px 18px;
+                border-radius: 18px;
+            }
+
+            h1 {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            .puzzle {
+                width: 220px;
+                height: 220px;
+            }
+
+            .piece {
+                background-size: 220px 220px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 7px 14px;
+            }
+        }
+
+        /* ---------- ผู้ใช้ลด Motion ---------- */
+        @media (prefers-reduced-motion: reduce) {
+            button {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card puzzle-wrapper">
+        <h1>จิ๊กซอว์รูปของเรา</h1>
+        <p class="subtitle">แตะชิ้นส่วน 2 ชิ้นเพื่อสลับตำแหน่ง</p>
+
+        <div id="puzzle" class="puzzle"></div>
+
+        <div class="status" id="status">เริ่มเล่นได้เลย~</div>
+
+        <div class="btn-row">
+            <button id="shuffleBtn">สับใหม่อีกครั้ง</button>
+            <button onclick="window.location.href='menu.html'">กลับไปหน้าเมนู</button>
+        </div>
+    </div>
+
+    <div id="celebrate" class="celebrate-overlay">
+        <div class="celebrate-box">
+            <div class="heart h1">💖</div>
+            <div class="heart h2">💕</div>
+            <div class="heart h3">💘</div>
+
+            <h2 class="celebrate-title">เย้ ต่อเสร็จแล้ว!</h2>
+            <p class="celebrate-text">
+                ต่อจิ๊กซอว์รูปของเราครบแล้วนะ<br>
+                เก่งที่สุดเลยยยย
+            </p>
+            <button id="closeCelebrate" class="celebrate-btn">
+                ปิด
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const puzzle = document.getElementById('puzzle');
+        const statusEl = document.getElementById('status');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+
+        const celebrate = document.getElementById('celebrate');
+        const closeCelebrate = document.getElementById('closeCelebrate');
+
+        const rows = 3;
+        const cols = 3;
+        let solvedOnce = false; // กัน popup เด้งซ้ำ
+
+        // 🛠️ FIX 1: ดึงขนาดภาพแบบไดนามิกเพื่อให้ backgroundPosition ถูกต้องตามขนาด Responsive
+        function createPieces() {
+            puzzle.innerHTML = '';
+            const total = rows * cols;
+
+            // ต้องรอให้ CSS คำนวณขนาดของ puzzle เสร็จก่อนจึงจะใช้ offsetWidth ได้
+            // สำหรับโค้ดที่รันตอนโหลดหน้า จะถือว่าขนาดเริ่มต้นถูกต้องตาม CSS แล้ว
+            const imgSize = puzzle.offsetWidth || 300; // ใช้ 300 เป็นค่า fallback
+
+            for (let i = 0; i < total; i++) {
+                const piece = document.createElement('div');
+                piece.classList.add('piece');
+                piece.dataset.correctIndex = i; // ตำแหน่งที่ถูกต้อง (0-8)
+
+                // 🗑️ ลบ piece.draggable = true ออก เพื่อใช้ tap-to-swap
+
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = -col * (imgSize / cols);
+                const y = -row * (imgSize / rows);
+                piece.style.backgroundPosition = `${x}px ${y}px`;
+
+                puzzle.appendChild(piece);
+            }
+        }
+
+        function shuffle() {
+            const pieces = Array.from(puzzle.children);
+            const shuffled = pieces
+                .map(p => ({ sort: Math.random(), value: p }))
+                .sort((a, b) => a.sort - b.sort)
+                .map(obj => obj.value);
+
+            shuffled.forEach(p => puzzle.appendChild(p));
+            solvedOnce = false;
+            statusEl.textContent = 'สู้สู้! แตะชิ้นส่วน 2 ชิ้นเพื่อสลับกัน';
+            celebrate.classList.remove('show');
+            // 📝 ต้องยกเลิกการเลือกชิ้นส่วนหากมีการ Shuffle ใหม่
+            const selected = puzzle.querySelector('.piece.selected');
+            if (selected) {
+                selected.classList.remove('selected');
+            }
+        }
+
+        function checkSolved() {
+            const pieces = Array.from(puzzle.children);
+            const solved = pieces.every((piece, index) => {
+                return parseInt(piece.dataset.correctIndex) === index;
+            });
+
+            if (solved && !solvedOnce) {
+                solvedOnce = true;
+                statusEl.textContent = 'เรียงถูกแล้วว เก่งมากเลยยยย!';
+                celebrate.classList.add('show'); // เปิด popup ฉลอง
+            }
+        }
+
+        // 🛠️ FIX 2: เปลี่ยนจาก Drag and Drop (ลาก/วาง) เป็น Tap-to-Swap (แตะ/สลับ)
+        function enableTapToSwap() {
+            let selectedPiece = null;
+
+            puzzle.addEventListener('click', (e) => {
+                const target = e.target;
+                if (!target.classList.contains('piece')) return;
+
+                if (selectedPiece === null) {
+                    // Step 1: เลือกชิ้นส่วนที่ 1
+                    selectedPiece = target;
+                    selectedPiece.classList.add('selected');
+                    statusEl.textContent = 'เลือกชิ้นที่ 2 เพื่อสลับตำแหน่ง';
+
+                } else if (selectedPiece === target) {
+                    // แตะซ้ำเพื่อยกเลิกการเลือก
+                    selectedPiece.classList.remove('selected');
+                    selectedPiece = null;
+                    statusEl.textContent = 'เริ่มเล่นได้เลย~';
+
+                } else {
+                    // Step 2: สลับชิ้นส่วนที่ 1 กับชิ้นส่วนที่ 2 (target)
+
+                    // Logic การสลับชิ้นส่วนใน DOM:
+                    // ต้องหาตำแหน่งในรายการ (index) เพื่อกำหนดลำดับการสลับที่ถูกต้อง
+                    const selectedNext = selectedPiece.nextSibling === target ? selectedPiece : selectedPiece.nextSibling;
+                    puzzle.insertBefore(selectedPiece, target);
+                    puzzle.insertBefore(target, selectedNext);
+
+                    // ล้างสถานะการเลือก
+                    selectedPiece.classList.remove('selected');
+                    selectedPiece = null;
+                    statusEl.textContent = 'สลับชิ้นส่วนแล้ว! สู้สู้!';
+
+                    checkSolved();
+                }
+            });
+        }
+
+        // ปิด popup
+        closeCelebrate.addEventListener('click', () => {
+            celebrate.classList.remove('show');
+        });
+
+        // ⚠️ เรียกใช้งานตามลำดับใหม่: สร้างชิ้นส่วน -> เปิดใช้งานการแตะ -> สุ่ม
+        createPieces();
+        enableTapToSwap(); // ใช้งาน Tap-to-Swap แทน Drag and Drop เดิม
+        shuffle();
+
+        shuffleBtn.addEventListener('click', shuffle);
+
+        // 📢 เพิ่มการสร้างชิ้นส่วนใหม่เมื่อหน้าจอเปลี่ยนขนาด (เพื่อแก้ไข backgroundPosition)
+        window.addEventListener('resize', () => {
+            // หน่วงเวลาเล็กน้อยเพื่อให้แน่ใจว่าการปรับขนาดเสร็จสมบูรณ์
+            setTimeout(() => {
+                // สร้างชิ้นส่วนใหม่ด้วยขนาดภาพที่ถูกต้อง
+                createPieces();
+                // จัดลำดับใหม่ตามลำดับก่อน resize (optional: อาจจะต้อง shuffle ใหม่เพื่อให้เล่นต่อได้)
+                // ในที่นี้เลือกที่จะ shuffle ใหม่เพื่อให้แน่ใจว่าเกมยังเล่นต่อได้
+                shuffle();
+            }, 300);
+        });
+    </script>
+</body>
+
+</html>
